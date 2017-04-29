@@ -4,22 +4,74 @@ output:
   html_document:
     keep_md: true
 ---
+```{r load_packages, include=FALSE}
+library(tidyverse)
+library(lattice)
+```
 
 
 ## Loading and preprocessing the data
-
-
+```{r reading_data, echo=TRUE}
+Data <- read.csv("activity.csv", header=TRUE, sep=",", na.strings = "NA")
+```
 
 ## What is mean total number of steps taken per day?
 
-
+```{r median_mean_steps, echo=TRUE}
+hist(Data$steps)
+mean_steps <- mean(Data$steps, na.rm=TRUE)
+median_steps <- median(Data$steps, na.rm=TRUE)
+```
+The mean of the total number of steps per day is `r mean_steps` and the median `r median_steps`.
 
 ## What is the average daily activity pattern?
 
+```{r plot_steps_interval, echo=TRUE}
+Dataplot <- Data %>% group_by(interval) %>% summarise(Avg=mean(steps, na.rm=TRUE))
+with(Dataplot, plot(interval, Avg, type="l"))
+interval <- with(Dataplot, Dataplot[Avg==max(Avg, na.rm=TRUE),]$interval)
+Avg <- with(Dataplot, Dataplot[Avg==max(Avg, na.rm=TRUE),]$Avg)
+```
 
+The 5-minute interval that contains the maximum number of steps on average across all the days in the dataset is `r interval`, with `r Avg` number of steps.
 
 ## Imputing missing values
 
+```{r NA_missing_values, echo=TRUE}
+NA_lines <- sum(is.na(Data$steps))
+
+#Will replace NA values by the mean of the steps by inteval
+replace.na.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+Data_nna <- Data %>%
+                group_by(interval) %>%
+                mutate(steps.no.NA=replace.na.mean(steps))
+                               
+#plot the histogram as before
+with(Data_nna, hist(steps.no.NA))
+
+#producing the mean and the median to compare to previous data
+mean_steps1 <- mean(Data$steps, na.rm=TRUE)
+median_steps1 <- median(Data$steps, na.rm=TRUE)
+
+```
+
+The total number of NAs in the data set are `r NA_lines`
+NAs will be replace by the mean of the steps in the respective interval
+
+The mean of the total number of steps per day is `r mean_steps1` and the median `r median_steps1`.  Not significatly different from the initial results.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r weekday_comparision, echo=TRUE}
+#Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+
+Data_nna$DayType <- factor((weekdays(as.Date(Data_nna$date)) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")), levels=c(FALSE, TRUE), labels=c('Weekend', 'Weekday'))
+         
+Dataplot2 <- Data_nna %>% group_by(interval,DayType) %>% summarise(Avg=mean(steps, na.rm=TRUE))
+
+with(Dataplot2, xyplot(Avg~interval | DayType , type="l", layout=(c(1,2))))
+
+```
+
+
